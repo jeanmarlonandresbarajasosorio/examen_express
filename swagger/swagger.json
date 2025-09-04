@@ -1,0 +1,64 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "KarenFlix API",
+    "version": "1.0.0",
+    "description": "Documentación de la API KarenFlix"
+  },
+  "servers": [
+    { "url": "http://localhost:4000/api/v1" }
+  ],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "summary": "Registro de usuario",
+        "tags": ["Auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "nombre": { "type": "string" },
+                  "email": { "type": "string" },
+                  "password": { "type": "string" }
+                },
+                "required": ["nombre","email","password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Usuario creado" },
+          "400": { "description": "Error de validación" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Login de usuario",
+        "tags": ["Auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string" },
+                  "password": { "type": "string" }
+                },
+                "required": ["email","password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Login exitoso, devuelve token" },
+          "401": { "description": "Credenciales inválidas" }
+        }
+      }
+    }
+  }
+}
