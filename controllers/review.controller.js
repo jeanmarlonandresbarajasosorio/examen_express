@@ -1,66 +1,72 @@
-const Review = require("../models/Review");
-const Movie = require("../models/Movie");
+const path = require("path");
+const fs = require("fs");
+const { ObjectId } = require("mongodb");
+const { createObjectCsvWriter } = require("csv-writer");
+const db = require("../config/db"); 
 
-exports.getReviews = async (req, res) => {
+exports.exportReviewsToCSV = async (req, res, next) => {
   try {
-    const reviews = await Review.find().populate("user").populate("movie");
-    res.json(reviews);
-  } catch (error) {
-    res.status(500).json({ message: "Error al obtener reseñas", error });
-  }
-};
+    const { movieId } = req.params;
 
-exports.getReviewById = async (req, res) => {
-  try {
-    const review = await Review.findById(req.params.id).populate("user").populate("movie");
-    if (!review) return res.status(404).json({ message: "Reseña no encontrada" });
-    res.json(review);
-  } catch (error) {
-    res.status(500).json({ message: "Error al obtener reseña", error });
-  }
-};
+    if (!ObjectId.isValid(movieId)) {
+      return res.status(400).json({ msg: "ID de película inválido" });
+    }
 
-exports.createReview = async (req, res) => {
-  try {
-    const review = new Review(req.body);
-    await review.save();
+    const reviewsCollection = db.collection("reviews");
 
-    // Agregar reseña a la película
-    await Movie.findByIdAndUpdate(review.movie, {
-      $push: { reviews: review._id },
+   
+    const reviews = await reviewsCollection
+      .aggregate([
+        { $match: { movieId: new ObjectId(movieId) } },
+        {
+          $lookup: {
+            from: "users",
+            localField: "userId",
+            foreignField: "_id",
+            as: "user",
+          },
+        },
+        { $unwind: "$user" },
+        {
+          $project: {
+            _id: 0,
+            usuario: "$user.nombre",
+            calificacion: "$rating",
+            comentario: "$comment",
+            fecha: "$createdAt",
+          },
+        },
+      ])
+      .toArray();
+
+    if (!reviews.length) {
+      return res.status(404).json({ msg: "No hay reseñas para esta película" });
+    }
+
+    const exportDir = path.join(__dirname, "..", "exports");
+    if (!fs.existsSync(exportDir)) {
+      fs.mkdirSync(exportDir);
+    }
+
+    const filePath = path.join(exportDir, `reviews_${movieId}.csv`);
+
+    const csvWriter = createObjectCsvWriter({
+      path: filePath,
+      header: [
+        { id: "usuario", title: "Usuario" },
+        { id: "calificacion", title: "Calificación" },
+        { id: "comentario", title: "Comentario" },
+        { id: "fecha", title: "Fecha de creación" },
+      ],
     });
 
-    res.status(201).json(review);
-  } catch (error) {
-    res.status(400).json({ message: "Error al crear reseña", error });
-  }
-};
+    await csvWriter.writeRecords(reviews);
 
-exports.updateReview = async (req, res) => {
-  try {
-    const updatedReview = await Review.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
-
-    if (!updatedReview)
-      return res.status(404).json({ message: "Reseña no encontrada" });
-
-    res.json(updatedReview);
-  } catch (error) {
-    res.status(400).json({ message: "Error al actualizar reseña", error });
-  }
-};
-
-exports.deleteReview = async (req, res) => {
-  try {
-    const deletedReview = await Review.findByIdAndDelete(req.params.id);
-    if (!deletedReview)
-      return res.status(404).json({ message: "Reseña no encontrada" });
-
-    res.json({ message: "Reseña eliminada correctamente" });
-  } catch (error) {
-    res.status(500).json({ message: "Error al eliminar reseña", error });
+    res.status(200).json({
+      msg: "Archivo CSV generado con éxito",
+      file: filePath,
+    });
+  } catch (err) {
+    next(err);
   }
 };

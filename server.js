@@ -30,6 +30,9 @@ const initializeApp = async () => {
     // =====================
     // Rutas principales
     // =====================
+    const reviewRoutes = require("./routes/reviewRoutes");
+    app.use("/reviews", reviewRoutes);
+
     app.use('/api/auth', require('./routes/auth.routes'));   // Rutas de autenticación
 
     // Rutas de películas - inicializar con la base de datos
@@ -229,7 +232,8 @@ process.on('unhandledRejection', (reason, promise) => {
 process.on('uncaughtException', (error) => {
   console.error('❌ Uncaught Exception:', error);
   process.exit(1);
+ 
+
 });
 
-// Inicializar aplicación
 initializeApp();

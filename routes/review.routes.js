@@ -1,17 +1,12 @@
-import { Router } from "express";
-import {
-  getReviewsByMovie,
-  createReview,
-  updateReview,
-  deleteReview
-} from "../controllers/review.controller.js";
-import authMiddleware from "../middlewares/auth.middleware.js";
+const express = require("express");
+const router = express.Router();
+const { exportReviewsToCSV } = require("../controllers/reviewController");
+const passport = require("passport");
 
-const router = Router();
+router.get(
+  "/export/:movieId",
+  passport.authenticate("jwt", { session: false }),
+  exportReviewsToCSV
+);
 
-router.get("/:movieId", getReviewsByMovie);
-router.post("/:movieId", authMiddleware, createReview);
-router.put("/:id", authMiddleware, updateReview);
-router.delete("/:id", authMiddleware, deleteReview);
-
-export default router;
+module.exports = router;
